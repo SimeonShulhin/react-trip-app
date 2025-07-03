@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Route App</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .sidebar {
+            width: 40%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .map-container {
+            width: 60%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 24px;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .trip-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #2d3748;
+            text-align: center;
+        }
+
+        .days-list {
+            margin-bottom: 30px;
+        }
+
+        .day-item {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .day-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .day-item.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-color: #6366f1;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .day-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .day-description {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .activities-section {
+            margin-top: 20px;
+        }
+
+        .activities-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .activity-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .activity-item.highlighted {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: #f59e0b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .activity-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #6366f1;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2d3748;
+        }
+
+        .activity-description {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .map {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            position: relative;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .map-title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            color: #2d3748;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .marker {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            z-index: 10;
+        }
+
+        .marker:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+        }
+
+        .marker.highlighted {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            transform: scale(1.3);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6); }
+            50% { box-shadow: 0 8px 25px rgba(245, 158, 11, 0.8); }
+            100% { box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6); }
+        }
+
+        .marker-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 5px;
+        }
+
+        .marker:hover .marker-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .marker-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+            }
+            
+            .sidebar, .map-container {
+                width: 100%;
+            }
+            
+            .map-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Mock data
+        const mockTripData = {
+            title: "Подорож по Італії",
+            days: [
+                {
+                    id: 1,
+                    title: "День 1: Прибуття в Рим",
+                    description: "Знайомство з Вічним містом",
+                    activities: [
+                        {
+                            id: 1,
+                            name: "Колізей",
+                            description: "Відвідування легендарного амфітеатру",
+                            lat: 25,
+                            lng: 30,
+                            image: "🏛️"
+                        },
+                        {
+                            id: 2,
+                            name: "Римський Форум",
+                            description: "Прогулянка серед античних руїн",
+                            lat: 35,
+                            lng: 45,
+                            image: "🏺"
+                        },
+                        {
+                            id: 3,
+                            name: "Пантеон",
+                            description: "Храм усіх богів",
+                            lat: 45,
+                            lng: 25,
+                            image: "⛪"
+                        }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: "День 2: Ватикан",
+                    description: "Духовний центр католицького світу",
+                    activities: [
+                        {
+                            id: 4,
+                            name: "Собор Святого Петра",
+                            description: "Найбільша базиліка у світі",
+                            lat: 60,
+                            lng: 70,
+                            image: "⛪"
+                        },
+                        {
+                            id: 5,
+                            name: "Сикстинська капела",
+                            description: "Шедеври Мікеланджело",
+                            lat: 70,
+                            lng: 55,
+                            image: "🎨"
+                        },
+                        {
+                            id: 6,
+                            name: "Музеї Ватикану",
+                            description: "Скарбниця мистецтва",
+                            lat: 55,
+                            lng: 80,
+                            image: "🖼️"
+                        }
+                    ]
+                },
+                {
+                    id: 3,
+                    title: "День 3: Флоренція",
+                    description: "Колиска Відродження",
+                    activities: [
+                        {
+                            id: 7,
+                            name: "Галерея Уффіці",
+                            description: "Найкращі твори Відродження",
+                            lat: 20,
+                            lng: 60,
+                            image: "🖼️"
+                        },
+                        {
+                            id: 8,
+                            name: "Понте Веккьо",
+                            description: "Знаменитий міст із крамничками",
+                            lat: 40,
+                            lng: 75,
+                            image: "🌉"
+                        },
+                        {
+                            id: 9,
+                            name: "Дуомо",
+                            description: "Кафедральний собор Флоренції",
+                            lat: 75,
+                            lng: 20,
+                            image: "⛪"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        function TravelRouteApp() {
+            const [tripData, setTripData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeDay, setActiveDay] = useState(null);
+            const [hoveredActivityId, setHoveredActivityId] = useState(null);
+
+            useEffect(() => {
+                // Simulate API call
+                const loadTripData = async () => {
+                    setLoading(true);
+                    // Simulate network delay
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    setTripData(mockTripData);
+                    setActiveDay(mockTripData.days[0]);
+                    setLoading(false);
+                };
+
+                loadTripData();
+            }, []);
+
+            const handleDayClick = (day) => {
+                setActiveDay(day);
+                setHoveredActivityId(null);
+            };
+
+            const handleActivityHover = (activityId) => {
+                setHoveredActivityId(activityId);
+            };
+
+            const handleActivityLeave = () => {
+                setHoveredActivityId(null);
+            };
+
+            if (loading) {
+                return (
+                    <div className="loading">
+                        <div className="spinner"></div>
+                        <div>Завантаження маршруту...</div>
+                    </div>
+                );
+            }
+
+            if (!tripData) {
+                return (
+                    <div className="loading">
+                        <div>Помилка завантаження даних</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app">
+                    <div className="sidebar">
+                        <h1 className="trip-title">{tripData.title}</h1>
+                        
+                        <div className="days-list">
+                            {tripData.days.map(day => (
+                                <div
+                                    key={day.id}
+                                    className={`day-item ${activeDay?.id === day.id ? 'active' : ''}`}
+                                    onClick={() => handleDayClick(day)}
+                                >
+                                    <div className="day-title">{day.title}</div>
+                                    <div className="day-description">{day.description}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {activeDay && (
+                            <div className="activities-section">
+                                <h2 className="activities-title">Заплановані активності</h2>
+                                {activeDay.activities.map(activity => (
+                                    <div
+                                        key={activity.id}
+                                        className={`activity-item ${hoveredActivityId === activity.id ? 'highlighted' : ''}`}
+                                        onMouseEnter={() => handleActivityHover(activity.id)}
+                                        onMouseLeave={handleActivityLeave}
+                                    >
+                                        <div className="activity-image">
+                                            {activity.image}
+                                        </div>
+                                        <div className="activity-info">
+                                            <div className="activity-name">{activity.name}</div>
+                                            <div className="activity-description">{activity.description}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="map-container">
+                        <div className="map">
+                            <div className="map-overlay"></div>
+                            <div className="map-title">
+                                {activeDay ? activeDay.title : 'Карта маршруту'}
+                            </div>
+                            
+                            {activeDay && activeDay.activities.map((activity, index) => (
+                                <div
+                                    key={activity.id}
+                                    className={`marker ${hoveredActivityId === activity.id ? 'highlighted' : ''}`}
+                                    style={{
+                                        top: `${activity.lat}%`,
+                                        left: `${activity.lng}%`,
+                                        transform: 'translate(-50%, -50%)'
+                                    }}
+                                    onMouseEnter={() => handleActivityHover(activity.id)}
+                                    onMouseLeave={handleActivityLeave}
+                                >
+                                    {index + 1}
+                                    <div className="marker-tooltip">
+                                        {activity.name}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TravelRouteApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
