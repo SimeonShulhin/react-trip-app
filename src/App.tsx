@@ -12,14 +12,23 @@ function App() {
   useEffect(() => {
     const loadTripData = async () => {
       setLoading(true);
+
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      fetch('/mock-trip.json')
-        .then((res) => res.json())
-        .then((data) => {
-          setActiveDay(data.days[0]);
-          setTripData(data);
-        });
-      setLoading(false);
+
+      try {
+        const res = await fetch('/mock-trip.json');
+        if (!res.ok) {
+          throw new Error('Failed to fetch data');
+        }
+
+        const data = await res.json();
+        setActiveDay(data.days[0]);
+        setTripData(data);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadTripData();
@@ -87,7 +96,7 @@ function App() {
                   src={activity.photo_url}
                   alt={activity.name}
                   onError={(e) => {
-                    e.currentTarget.src = './src/assets/image-not-found.png';
+                    e.currentTarget.src = '/image-not-found.png';
                   }}
                 />
                 <div className='activity-info'>
